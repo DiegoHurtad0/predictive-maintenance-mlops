@@ -1,0 +1,8 @@
+{
+  "primary_run_id": "3fbe070d361a4c8386a16ab282a53b76",
+  "baseline_run_id": "87345d315d08428fb4ef990e6e872e67",
+  "tracking_uri": "file:./outputs/mlruns",
+  "experiment_name": "predictive-maintenance",
+  "test_f1": 0.9901065449010654,
+  "test_roc_auc": 0.9999929859050052
+}

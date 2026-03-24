@@ -1,0 +1,15 @@
+artifact_uri: /Users/diego/Documents/quad/outputs/mlflow_artifacts/251593578087881013/dc900f0483974a838fe7735d451d3469/artifacts
+end_time: 1774334077792
+entry_point_name: ''
+experiment_id: '251593578087881013'
+lifecycle_stage: active
+run_id: dc900f0483974a838fe7735d451d3469
+run_name: lightgbm_primary
+run_uuid: dc900f0483974a838fe7735d451d3469
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1774334066736
+status: 3
+tags: []
+user_id: diego

@@ -1,0 +1,35 @@
+# =============================================================================
+# Dockerfile.pipeline — Containerizes the training + inference pipeline
+# =============================================================================
+# I designed this as a multi-stage build:
+#   Stage 1: Install dependencies in a clean layer (cached on requirements.txt changes)
+#   Stage 2: Copy source code and run the pipeline
+#
+# Usage:
+#   docker build -f Dockerfile.pipeline -t pdm-pipeline .
+#   docker run -v $(pwd)/data:/app/data -v $(pwd)/outputs:/app/outputs pdm-pipeline
+
+FROM python:3.11-slim AS base
+
+WORKDIR /app
+
+# System dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Python dependencies (cached layer)
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Application code
+COPY configs/ configs/
+COPY src/ src/
+COPY api/ api/
+
+# Create output directories
+RUN mkdir -p data/raw data/processed outputs/metrics outputs/mlflow_artifacts \
+    outputs/predictions logs
+
+# Default: run the full training pipeline
+CMD ["python", "-m", "src.pipeline"]

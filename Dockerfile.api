@@ -1,0 +1,30 @@
+# =============================================================================
+# Dockerfile.api — Containerizes the FastAPI serving application
+# =============================================================================
+# I designed this image to be lightweight and focused solely on serving.
+# It expects the model artifact to be mounted as a volume.
+#
+# Usage:
+#   docker build -f Dockerfile.api -t pdm-api .
+#   docker run -p 8000:8000 -v $(pwd)/outputs:/app/outputs pdm-api
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY configs/ configs/
+COPY src/ src/
+COPY api/ api/
+
+RUN mkdir -p outputs logs
+
+EXPOSE 8000
+
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -1,0 +1,4 @@
+Confusion Matrix (test set, threshold=0.5):
+               Predicted 0   Predicted 1
+  Actual 0          73773           19
+  Actual 1              7         1301

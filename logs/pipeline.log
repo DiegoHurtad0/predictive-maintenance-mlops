@@ -1,0 +1,193 @@
+2026-03-24 19:17:18,072 | __main__                  | INFO     | ======================================================================
+2026-03-24 19:17:18,073 | __main__                  | INFO     | PREDICTIVE MAINTENANCE PIPELINE — STARTING
+2026-03-24 19:17:18,073 | __main__                  | INFO     | ======================================================================
+2026-03-24 19:17:18,073 | __main__                  | INFO     | Config loaded from: configs/main_config.yaml
+2026-03-24 19:17:18,074 | __main__                  | INFO     | 
+>>> STAGE 1: Data Loading & Validation
+2026-03-24 19:17:18,074 | src.data_processing       | INFO     | Loading telemetry from data/PdM_telemetry.csv
+2026-03-24 19:17:18,623 | src.data_processing       | INFO     |   -> 876100 rows, 6 columns
+2026-03-24 19:17:18,623 | src.data_processing       | INFO     | Loading errors from data/PdM_errors.csv
+2026-03-24 19:17:18,627 | src.data_processing       | INFO     |   -> 3919 rows, 3 columns
+2026-03-24 19:17:18,627 | src.data_processing       | INFO     | Loading maintenance from data/PdM_maint.csv
+2026-03-24 19:17:18,631 | src.data_processing       | INFO     |   -> 3286 rows, 3 columns
+2026-03-24 19:17:18,631 | src.data_processing       | INFO     | Loading failures from data/PdM_failures.csv
+2026-03-24 19:17:18,633 | src.data_processing       | INFO     |   -> 761 rows, 3 columns
+2026-03-24 19:17:18,633 | src.data_processing       | INFO     | Loading machines from data/PdM_machines.csv
+2026-03-24 19:17:18,635 | src.data_processing       | INFO     |   -> 100 rows, 3 columns
+2026-03-24 19:17:18,642 | src.data_processing       | INFO     | All raw data schema validations passed.
+2026-03-24 19:17:18,642 | src.data_processing       | INFO     | Engineering failure labels with 24-hour forecast horizon...
+2026-03-24 19:17:18,949 | src.data_processing       | INFO     | Label distribution — positive: 17184 (1.96%), negative: 858916 (98.04%)
+2026-03-24 19:17:18,952 | __main__                  | INFO     | 
+>>> STAGE 2: Feature Engineering
+2026-03-24 19:17:18,952 | src.feature_engineering   | INFO     | ============================================================
+2026-03-24 19:17:18,953 | src.feature_engineering   | INFO     | FEATURE ENGINEERING — START
+2026-03-24 19:17:18,955 | src.feature_engineering   | INFO     | ============================================================
+2026-03-24 19:17:18,973 | src.feature_engineering   | INFO     | Building rolling telemetry features (windows=[3, 12, 24])...
+2026-03-24 19:17:19,737 | src.feature_engineering   | INFO     |   -> Rolling features shape: (876100, 30)
+2026-03-24 19:17:19,741 | src.feature_engineering   | INFO     | Building lag difference features (lags=[24])...
+2026-03-24 19:17:20,221 | src.feature_engineering   | INFO     | Building error count features (lookback=24h, types=['error1', 'error2', 'error3', 'error4', 'error5'])...
+2026-03-24 19:17:44,538 | src.feature_engineering   | INFO     |   -> Error features added.
+2026-03-24 19:17:44,539 | src.feature_engineering   | INFO     | Building maintenance recency features...
+2026-03-24 19:17:53,677 | src.feature_engineering   | INFO     |   -> Maintenance recency features added.
+2026-03-24 19:17:53,678 | src.feature_engineering   | INFO     | Building machine metadata features...
+2026-03-24 19:17:54,186 | src.feature_engineering   | INFO     |   -> Machine metadata merged. Shape: (876100, 47)
+2026-03-24 19:17:54,453 | src.feature_engineering   | INFO     | Final feature matrix shape: (876100, 51)
+2026-03-24 19:17:54,472 | src.feature_engineering   | INFO     | FEATURE ENGINEERING — COMPLETE
+2026-03-24 19:17:54,472 | src.feature_engineering   | INFO     | ============================================================
+2026-03-24 19:17:55,359 | __main__                  | INFO     | Feature matrix saved to: data/processed/features.parquet
+2026-03-24 19:17:55,359 | __main__                  | INFO     | 
+>>> STAGE 3: Model Training & Evaluation
+2026-03-24 19:17:55,359 | src.training              | INFO     | ============================================================
+2026-03-24 19:17:55,360 | src.training              | INFO     | MODEL TRAINING — START
+2026-03-24 19:17:55,360 | src.training              | INFO     | ============================================================
+2026-03-24 19:17:55,482 | src.training              | INFO     | Temporal split:
+2026-03-24 19:17:55,483 | src.training              | INFO     |   Train: 654600 rows (< 2015-10-01 00:00:00)
+2026-03-24 19:17:55,483 | src.training              | INFO     |   Val:   146400 rows ([2015-10-01 00:00:00, 2015-12-01 00:00:00))
+2026-03-24 19:17:55,483 | src.training              | INFO     |   Test:  75100 rows (>= 2015-12-01 00:00:00)
+2026-03-24 19:17:55,485 | src.training              | INFO     |   Train label dist: {0: 641466, 1: 13134}
+2026-03-24 19:17:55,485 | src.training              | INFO     |   Val label dist:   {0: 143658, 1: 2742}
+2026-03-24 19:17:55,486 | src.training              | INFO     |   Test label dist:  {0: 73792, 1: 1308}
+2026-03-24 19:17:55,486 | src.training              | INFO     | Using 47 features: ['volt', 'rotate', 'pressure', 'vibration', 'volt_mean_3h', 'volt_std_3h', 'volt_mean_12h', 'volt_std_12h', 'volt_mean_24h', 'volt_std_24h']
+2026-03-24 19:17:55,626 | src.training              | INFO     | Building LightGBM pipeline with params: {'n_estimators': 500, 'max_depth': 7, 'learning_rate': 0.05, 'num_leaves': 63, 'min_child_samples': 50, 'subsample': 0.8, 'colsample_bytree': 0.8, 'is_unbalance': True, 'random_state': 42, 'n_jobs': -1, 'verbosity': -1}
+2026-03-24 19:17:55,626 | src.training              | INFO     | Fitting LightGBM on 654600 training samples...
+2026-03-24 19:18:14,507 | src.training              | INFO     | --- VAL Metrics ---
+2026-03-24 19:18:14,512 | src.training              | INFO     |   val_f1: 0.9933
+2026-03-24 19:18:14,512 | src.training              | INFO     |   val_precision: 0.9884
+2026-03-24 19:18:14,512 | src.training              | INFO     |   val_recall: 0.9982
+2026-03-24 19:18:14,512 | src.training              | INFO     |   val_roc_auc: 1.0000
+2026-03-24 19:18:14,512 | src.training              | INFO     |   val_avg_precision: 0.9995
+2026-03-24 19:18:14,581 | src.training              | INFO     | 
+VAL Classification Report:
+              precision    recall  f1-score   support
+
+           0       1.00      1.00      1.00    143658
+           1       0.99      1.00      0.99      2742
+
+    accuracy                           1.00    146400
+   macro avg       0.99      1.00      1.00    146400
+weighted avg       1.00      1.00      1.00    146400
+
+2026-03-24 19:18:14,589 | src.training              | INFO     | VAL Confusion Matrix:
+[[143626     32]
+ [     5   2737]]
+2026-03-24 19:18:14,786 | src.training              | INFO     | --- TEST Metrics ---
+2026-03-24 19:18:14,786 | src.training              | INFO     |   test_f1: 0.9901
+2026-03-24 19:18:14,786 | src.training              | INFO     |   test_precision: 0.9856
+2026-03-24 19:18:14,786 | src.training              | INFO     |   test_recall: 0.9946
+2026-03-24 19:18:14,786 | src.training              | INFO     |   test_roc_auc: 1.0000
+2026-03-24 19:18:14,786 | src.training              | INFO     |   test_avg_precision: 0.9996
+2026-03-24 19:18:14,821 | src.training              | INFO     | 
+TEST Classification Report:
+              precision    recall  f1-score   support
+
+           0       1.00      1.00      1.00     73792
+           1       0.99      0.99      0.99      1308
+
+    accuracy                           1.00     75100
+   macro avg       0.99      1.00      0.99     75100
+weighted avg       1.00      1.00      1.00     75100
+
+2026-03-24 19:18:14,825 | src.training              | INFO     | TEST Confusion Matrix:
+[[73773    19]
+ [    7  1301]]
+2026-03-24 19:18:14,852 | src.training              | INFO     | Top 15 features by importance:
+                    feature  importance
+37  hours_since_maint_comp1        2338
+40  hours_since_maint_comp4        2018
+38  hours_since_maint_comp2        1980
+39  hours_since_maint_comp3        1892
+26       vibration_mean_24h        1430
+8             volt_mean_24h        1346
+20        pressure_mean_24h        1137
+14          rotate_mean_24h        1130
+32   error_error1_count_24h        1120
+35   error_error4_count_24h         896
+12          rotate_mean_12h         867
+36   error_error5_count_24h         838
+45              hour_of_day         769
+6             volt_mean_12h         755
+24       vibration_mean_12h         717
+2026-03-24 19:18:14,865 | src.training              | INFO     | MLflow run ID: 2e02640ccc4a46aca8c5d3801946fb09
+2026-03-24 19:18:14,880 | src.training              | INFO     | Building Logistic Regression baseline with params: {'C': 1.0, 'max_iter': 1000, 'class_weight': 'balanced', 'random_state': 42, 'solver': 'lbfgs'}
+2026-03-24 19:18:14,880 | src.training              | INFO     | Fitting Logistic Regression baseline...
+2026-03-24 19:18:18,710 | src.training              | INFO     | --- BASELINE_VAL Metrics ---
+2026-03-24 19:18:18,711 | src.training              | INFO     |   baseline_val_f1: 0.6606
+2026-03-24 19:18:18,711 | src.training              | INFO     |   baseline_val_precision: 0.4934
+2026-03-24 19:18:18,711 | src.training              | INFO     |   baseline_val_recall: 0.9989
+2026-03-24 19:18:18,711 | src.training              | INFO     |   baseline_val_roc_auc: 0.9974
+2026-03-24 19:18:18,711 | src.training              | INFO     |   baseline_val_avg_precision: 0.8397
+2026-03-24 19:18:18,776 | src.training              | INFO     | 
+BASELINE_VAL Classification Report:
+              precision    recall  f1-score   support
+
+           0       1.00      0.98      0.99    143658
+           1       0.49      1.00      0.66      2742
+
+    accuracy                           0.98    146400
+   macro avg       0.75      0.99      0.83    146400
+weighted avg       0.99      0.98      0.98    146400
+
+2026-03-24 19:18:18,783 | src.training              | INFO     | BASELINE_VAL Confusion Matrix:
+[[140846   2812]
+ [     3   2739]]
+2026-03-24 19:18:18,863 | src.training              | INFO     | --- BASELINE_TEST Metrics ---
+2026-03-24 19:18:18,865 | src.training              | INFO     |   baseline_test_f1: 0.6215
+2026-03-24 19:18:18,869 | src.training              | INFO     |   baseline_test_precision: 0.4516
+2026-03-24 19:18:18,872 | src.training              | INFO     |   baseline_test_recall: 0.9962
+2026-03-24 19:18:18,874 | src.training              | INFO     |   baseline_test_roc_auc: 0.9971
+2026-03-24 19:18:18,875 | src.training              | INFO     |   baseline_test_avg_precision: 0.8177
+2026-03-24 19:18:18,912 | src.training              | INFO     | 
+BASELINE_TEST Classification Report:
+              precision    recall  f1-score   support
+
+           0       1.00      0.98      0.99     73792
+           1       0.45      1.00      0.62      1308
+
+    accuracy                           0.98     75100
+   macro avg       0.73      0.99      0.81     75100
+weighted avg       0.99      0.98      0.98     75100
+
+2026-03-24 19:18:18,916 | src.training              | INFO     | BASELINE_TEST Confusion Matrix:
+[[72210  1582]
+ [    5  1303]]
+2026-03-24 19:18:18,950 | src.training              | INFO     | Model artifact saved to: outputs/model_pipeline.joblib
+2026-03-24 19:18:18,951 | src.training              | INFO     | Feature columns saved to: outputs/feature_columns.json
+2026-03-24 19:18:18,951 | src.training              | INFO     | MODEL TRAINING — COMPLETE
+2026-03-24 19:18:18,952 | src.training              | INFO     | ============================================================
+2026-03-24 19:18:18,968 | __main__                  | INFO     | 
+>>> STAGE 4: Batch Inference
+2026-03-24 19:18:18,969 | src.inference             | INFO     | Loading model from: outputs/model_pipeline.joblib
+2026-03-24 19:18:18,979 | src.inference             | INFO     | Loading feature columns from: outputs/feature_columns.json
+2026-03-24 19:18:18,979 | src.inference             | INFO     | Running batch inference on 876100 rows...
+2026-03-24 19:18:21,730 | src.inference             | INFO     | Batch inference complete — 17223 alerts across 99 machines (of 876100 total rows)
+2026-03-24 19:18:21,737 | src.inference             | INFO     | Running batch inference on 876100 rows...
+2026-03-24 19:18:23,582 | src.inference             | INFO     | Batch inference complete — 17223 alerts across 99 machines (of 876100 total rows)
+2026-03-24 19:18:25,495 | src.inference             | INFO     | Predictions saved to: outputs/predictions/failure_predictions.csv
+2026-03-24 19:18:25,495 | __main__                  | INFO     | 
+>>> STAGE 5: Maintenance Report
+2026-03-24 19:18:25,521 | src.inference             | INFO     | Maintenance priority report:
+    machineID  max_failure_prob  mean_failure_prob  alert_hours  total_hours risk_tier
+97         98               1.0           0.038353          336         8761      HIGH
+16         17               1.0           0.035271          309         8761      HIGH
+31         32               1.0           0.024655          216         8761      HIGH
+6           7               1.0           0.024655          216         8761      HIGH
+21         22               1.0           0.035273          309         8761      HIGH
+51         52               1.0           0.013698          120         8761      HIGH
+87         88               1.0           0.021501          189         8761      HIGH
+93         94               1.0           0.027053          237         8761      HIGH
+91         92               1.0           0.022942          201         8761      HIGH
+65         66               1.0           0.010958           96         8761      HIGH
+24         25               1.0           0.016437          144         8761      HIGH
+14         15               1.0           0.013697          120         8761      HIGH
+12         13               1.0           0.027394          240         8761      HIGH
+20         21               1.0           0.027395          240         8761      HIGH
+29         30               1.0           0.010958           96         8761      HIGH
+10         11               1.0           0.013273          117         8761      HIGH
+30         31               1.0           0.016437          144         8761      HIGH
+82         83               1.0           0.032532          285         8761      HIGH
+11         12               1.0           0.013697          120         8761      HIGH
+48         49               1.0           0.030535          269         8761      HIGH
+2026-03-24 19:18:25,522 | __main__                  | INFO     | Maintenance report saved to: outputs/predictions/maintenance_report.csv
+2026-03-24 19:18:25,523 | __main__                  | INFO     | ======================================================================
+2026-03-24 19:18:25,523 | __main__                  | INFO     | PIPELINE COMPLETE — Total time: 67.5 seconds
+2026-03-24 19:18:25,523 | __main__                  | INFO     | ======================================================================

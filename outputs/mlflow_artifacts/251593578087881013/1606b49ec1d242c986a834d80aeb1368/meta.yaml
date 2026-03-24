@@ -1,0 +1,15 @@
+artifact_uri: /Users/diego/Documents/quad/outputs/mlflow_artifacts/251593578087881013/1606b49ec1d242c986a834d80aeb1368/artifacts
+end_time: 1774379898928
+entry_point_name: ''
+experiment_id: '251593578087881013'
+lifecycle_stage: active
+run_id: 1606b49ec1d242c986a834d80aeb1368
+run_name: logistic_regression_baseline
+run_uuid: 1606b49ec1d242c986a834d80aeb1368
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1774379894869
+status: 3
+tags: []
+user_id: root

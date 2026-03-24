@@ -1,0 +1,14 @@
+aliases: []
+creation_timestamp: 1774385201835
+current_stage: None
+description: null
+last_updated_timestamp: 1774385201835
+name: pdm_failure_classifier
+run_id: d7d77e63d4af498e905725d90e67c8af
+run_link: null
+source: file:///Users/diego/Documents/quad/outputs/mlruns/130492960859859612/d7d77e63d4af498e905725d90e67c8af/artifacts/model
+status: READY
+status_message: null
+storage_location: file:///Users/diego/Documents/quad/outputs/mlruns/130492960859859612/d7d77e63d4af498e905725d90e67c8af/artifacts/model
+user_id: null
+version: 1

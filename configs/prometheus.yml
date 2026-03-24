@@ -1,0 +1,10 @@
+# Prometheus scraping configuration for the PdM API
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: "pdm-api"
+    static_configs:
+      - targets: ["api:8000"]
+    metrics_path: "/metrics"

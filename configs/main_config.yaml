@@ -1,0 +1,114 @@
+# =============================================================================
+# Predictive Maintenance Pipeline — Central Configuration
+# =============================================================================
+# I designed this single YAML to be the source of truth for every tunable
+# parameter in the system. No magic numbers live in Python code.
+
+# -- Data Paths ---------------------------------------------------------------
+data:
+  raw_dir: "data"
+  processed_dir: "data/processed"
+  telemetry_file: "PdM_telemetry.csv"
+  errors_file: "PdM_errors.csv"
+  maintenance_file: "PdM_maint.csv"
+  failures_file: "PdM_failures.csv"
+  machines_file: "PdM_machines.csv"
+  output_features_file: "features.parquet"
+  output_labels_file: "labels.parquet"
+
+# -- Feature Engineering ------------------------------------------------------
+features:
+  telemetry_columns:
+    - volt
+    - rotate
+    - pressure
+    - vibration
+  rolling_windows_hours:
+    - 3
+    - 12
+    - 24
+  lag_periods_hours:
+    - 24
+  error_types:
+    - error1
+    - error2
+    - error3
+    - error4
+    - error5
+  component_types:
+    - comp1
+    - comp2
+    - comp3
+    - comp4
+  error_lookback_hours: 24
+  failure_horizon_hours: 24
+
+# -- Temporal Split -----------------------------------------------------------
+split:
+  train_end: "2015-10-01"
+  val_end: "2015-12-01"
+  # test = everything after val_end
+
+# -- Model: LightGBM ---------------------------------------------------------
+model:
+  type: "lightgbm"
+  random_seed: 42
+  params:
+    n_estimators: 500
+    max_depth: 7
+    learning_rate: 0.05
+    num_leaves: 63
+    min_child_samples: 50
+    subsample: 0.8
+    colsample_bytree: 0.8
+    is_unbalance: true
+    random_state: 42
+    n_jobs: -1
+    verbosity: -1
+
+# -- Baseline: Logistic Regression --------------------------------------------
+baseline:
+  type: "logistic_regression"
+  params:
+    C: 1.0
+    max_iter: 1000
+    class_weight: "balanced"
+    random_state: 42
+    solver: "lbfgs"
+
+# -- Evaluation ---------------------------------------------------------------
+evaluation:
+  cv_folds: 3
+  primary_metric: "f1"
+  threshold: 0.5
+  metrics:
+    - f1
+    - precision
+    - recall
+    - roc_auc
+    - average_precision
+
+# -- MLflow -------------------------------------------------------------------
+mlflow:
+  tracking_uri: "file:./outputs/mlruns"          # local runs; override to http://mlflow:5050 inside Docker
+  experiment_name: "predictive-maintenance"
+  register_model: true
+  registry_model_name: "pdm_failure_classifier"
+
+# -- Logging ------------------------------------------------------------------
+logging:
+  level: "INFO"
+  log_file: "logs/pipeline.log"
+  format: "%(asctime)s | %(name)-25s | %(levelname)-8s | %(message)s"
+
+# -- Inference / Serving ------------------------------------------------------
+inference:
+  model_artifact_path: "outputs/model_pipeline.joblib"
+  batch_output_dir: "outputs/predictions"
+  batch_output_file: "failure_predictions.csv"
+
+# -- API ----------------------------------------------------------------------
+api:
+  host: "0.0.0.0"
+  port: 8000
+  model_path: "outputs/model_pipeline.joblib"

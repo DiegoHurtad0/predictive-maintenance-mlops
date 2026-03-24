@@ -1,0 +1,10 @@
+artifact_location: file:///Users/diego/Documents/quad/outputs/mlruns/130492960859859612/models/m-671a27a097304d64b9787057c2c7813a/artifacts
+creation_timestamp: 1774387451382
+experiment_id: '130492960859859612'
+last_updated_timestamp: 1774387456493
+model_id: m-671a27a097304d64b9787057c2c7813a
+model_type: null
+name: model
+source_run_id: b81f2fdc2e5643b7a619a613482326d3
+status: 2
+status_message: null

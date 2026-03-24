@@ -1,0 +1,14 @@
+artifact_uri: file:///Users/diego/Documents/quad/outputs/mlruns/130492960859859612/3fbe070d361a4c8386a16ab282a53b76/artifacts
+end_time: 1774387939771
+entry_point_name: ''
+experiment_id: '130492960859859612'
+lifecycle_stage: active
+run_id: 3fbe070d361a4c8386a16ab282a53b76
+run_name: lightgbm_primary
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1774387926345
+status: 3
+tags: []
+user_id: diego

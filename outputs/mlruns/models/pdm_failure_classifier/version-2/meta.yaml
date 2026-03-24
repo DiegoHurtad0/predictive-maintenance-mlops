@@ -1,0 +1,15 @@
+creation_timestamp: 1774385385031
+current_stage: None
+deployment_job_state: null
+description: null
+last_updated_timestamp: 1774385385031
+model_id: m-abc85f0b4d45430da4c493fe1b92e481
+name: pdm_failure_classifier
+run_id: cb18a7f73d684a75a582aebc53758aa9
+run_link: null
+source: models:/m-abc85f0b4d45430da4c493fe1b92e481
+status: READY
+status_message: null
+storage_location: file:///Users/diego/Documents/quad/outputs/mlruns/130492960859859612/models/m-abc85f0b4d45430da4c493fe1b92e481/artifacts
+user_id: null
+version: 2

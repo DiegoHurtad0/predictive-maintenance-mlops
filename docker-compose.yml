@@ -1,0 +1,155 @@
+# =============================================================================
+# docker-compose.yml — Full-stack orchestration
+# =============================================================================
+# I designed this compose file so that a reviewer can run a single command
+# and get the complete system running with zero environment setup.
+#
+# Usage:
+#   docker compose up -d                          # Start everything (API + MLflow + Grafana)
+#   docker compose --profile train run pipeline   # Train the model first
+#   docker compose down                           # Stop all services
+#   docker compose down -v                        # Stop + wipe volumes (full reset)
+#
+# Endpoints (all start by default — no --profile flag needed):
+#   API:        http://localhost:8000/docs
+#   MLflow:     http://localhost:5050
+#   Prometheus: http://localhost:9090
+#   Grafana:    http://localhost:3000  (no login required, auto-configured)
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # Training Pipeline
+  # Only runs when explicitly triggered: docker compose --profile train run pipeline
+  # ---------------------------------------------------------------------------
+  pipeline:
+    build:
+      context: .
+      dockerfile: Dockerfile.pipeline
+    volumes:
+      - ./data:/app/data
+      - ./outputs:/app/outputs
+      - ./logs:/app/logs
+    environment:
+      - PYTHONPATH=/app
+      # When training inside Docker, log directly to the MLflow HTTP server
+      # so experiments are stored in mlflow's own DB and visible in the UI.
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    profiles:
+      - train
+
+  # ---------------------------------------------------------------------------
+  # FastAPI Serving
+  # ---------------------------------------------------------------------------
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./outputs:/app/outputs
+      - ./logs:/app/logs
+    environment:
+      - PYTHONPATH=/app
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ---------------------------------------------------------------------------
+  # MLflow Tracking Server
+  #
+  # ROOT CAUSE FIX: Previously used sqlite:///mlflow.db in a named volume while
+  # the training script wrote to ./outputs/mlruns (file store) — two completely
+  # separate backends, so the UI was always empty.
+  #
+  # FIX: Use the file-based backend pointed at the SAME directory the training
+  # script writes to. We bind-mount ./outputs/mlruns → /mlflow/mlruns so both
+  # local runs and Docker runs share one unified store.
+  #
+  # Gunicorn flags:
+  #   --workers 2   : prevent one slow request from blocking the whole server
+  #   --timeout 120 : raise deadline from 30s → 120s (avoids SIGKILL on artifact ops)
+  #   --keep-alive 5: reduce socket churn from Prometheus scraping
+  # ---------------------------------------------------------------------------
+  mlflow:
+    image: python:3.11-slim
+    # `mlflow ui` starts a single Flask dev server that correctly binds to
+    # --host 0.0.0.0, making it reachable via Docker port mapping.
+    # `mlflow server` (gunicorn split-process) always internally binds to
+    # 127.0.0.1 regardless of --host, so Docker's NAT has nothing to forward to.
+    # For a PoC, `mlflow ui` is the right tool — read-only experiment browser
+    # backed by the same ./outputs/mlruns file store used by local training.
+    # MLflow 2.x's `mlflow server` always runs gunicorn internally on 127.0.0.1
+    # (loopback), making Docker port mapping impossible. The fix: invoke gunicorn
+    # directly against mlflow.server:app with -b 0.0.0.0:5050, bypassing MLflow's
+    # wrapper. MLFLOW_TRACKING_URI configures the Flask app's backing store.
+    environment:
+      - MLFLOW_TRACKING_URI=file:///mlflow/mlruns
+    command: ["bash", "-c", "pip install --quiet mlflow==2.19.0 gunicorn==21.2.0 && gunicorn -b 0.0.0.0:5050 -w 2 --timeout 120 --keep-alive 5 mlflow.server:app"]
+    ports:
+      - "5050:5050"
+    volumes:
+      # Bind-mount the same mlruns directory that the training script writes to.
+      # This is the key fix: local training + Docker UI now share one store.
+      - ./outputs/mlruns:/mlflow/mlruns
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5050/')"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 45s
+
+  # ---------------------------------------------------------------------------
+  # Prometheus — scrapes /metrics from the FastAPI container
+  # ---------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./configs/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - api
+
+  # ---------------------------------------------------------------------------
+  # Grafana — auto-provisioned with Prometheus datasource + PdM dashboard
+  #
+  # ROOT CAUSE FIX: Previously the dashboards volume was missing from compose,
+  # so Grafana's provisioner looked at /var/lib/grafana/dashboards but found
+  # nothing there. Fixed by adding the explicit bind-mount below.
+  #
+  # GF_AUTH_ANONYMOUS_ENABLED=true  → skip login screen for reviewers
+  # GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH → sets pdm_overview as home page
+  # ---------------------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_USER=admin
+      # Allow reviewers to open Grafana without having to log in
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+      # Set the PdM overview as the default home dashboard
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/pdm_overview.json
+    volumes:
+      # Provisioning: datasources + dashboard provider config
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      # Dashboard JSONs — this was the missing mount causing empty Grafana
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
